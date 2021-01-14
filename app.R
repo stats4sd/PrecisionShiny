@@ -63,10 +63,13 @@ ui <- fluidPage(
         tabPanel("Data",DT::dataTableOutput("data1")),
         tabPanel("Summary",tableOutput("stats1"),plotlyOutput("plot1")),
         tabPanel("Repeatability",actionButton(inputId = "nrep",
-                                              label="Add 100 New Surveys"),htmlOutput("title1"),plotlyOutput("plot3"),
+                                              label="Add 100 New Surveys"),
+                 selectInput("axis_type","Axis range",c("Zoomed in"="zoom","Full range"="full")),
+                 htmlOutput("title1"),plotlyOutput("plot3"),
                  checkboxInput("meanline","Add Mean Line",value=FALSE), checkboxInput("ciline","Add 95% CI Lines",value=FALSE), 
                  plotlyOutput("plot_hist")),
-        tabPanel("Precision",tableOutput("stats2"),plotlyOutput("plot5"),plotlyOutput("plot4")),
+        tabPanel("Precision",tableOutput("stats2"),selectInput("type","Select Plot Variable",c("95% Confidence Interval"="CI","Standard error"="SE")),
+                 plotlyOutput("plot5")),
         tabPanel("Disaggregation", selectInput(inputId = "group",
                                                "Select A Disaggregation Variable",
                                                c("Gender of Farmer" = "Gender","Coffee Production System"="Shade")),
@@ -165,7 +168,7 @@ server <- function(input, output) {
       tmp<-pdat[sample(1:1000,as.numeric(as.character(input$Add10))),input$Variable]
       reps$Estimate[i]<-mean(tmp)
       reps$sd[i]<-ifelse(input$Variable=="SOC"|input$Variable=="Area",sd(tmp),
-                         100*sqrt(mean(tmp/100)*(1-mean(tmp/100))))
+                         sqrt(mean(tmp)*(1-mean(tmp))))
     }
     reps$upper<-reps$Estimate+qt(0.975,as.numeric(as.character(input$Add10))-1)*sqrt((1000-as.numeric(as.character(input$Add10)))/999)*reps$sd/sqrt(as.numeric(as.character(input$Add10)))
     reps$lower<-reps$Estimate-qt(0.975,as.numeric(as.character(input$Add10))-1)*sqrt((1000-as.numeric(as.character(input$Add10)))/999)*reps$sd/sqrt(as.numeric(as.character(input$Add10)))
@@ -181,6 +184,27 @@ server <- function(input, output) {
                           ymin=lower),col="red",linetype=2)
     }
 
+    
+    if(input$axis_type=="full"){
+    if(input$Variable=="Gender"|input$Variable=="Shade"){
+      
+      p1<-p1+scale_y_continuous(labels=scales::percent,limits=c(0,1),breaks=seq(0,1,by=0.2))
+    }
+    if(input$Variable=="Area"){
+      
+      p1<-p1+scale_y_continuous(limits=c(0,25),breaks=seq(0,25,by=5))
+    }
+    if(input$Variable=="SOC"){
+      
+      p1<-p1+scale_y_continuous(limits=c(0,100),breaks=seq(0,100,by=20))
+    }
+    }
+    if(input$axis_type=="zoom"){
+      if(input$Variable=="Gender"|input$Variable=="Shade"){
+        
+        p1<-p1+scale_y_continuous(labels=scales::percent)
+      }
+    }
     
     p2<-p1+geom_point(size=2,col="forestgreen")+
       theme(axis.title = element_text(size=14),title = element_text(size=18,face = "bold"),
@@ -202,11 +226,39 @@ server <- function(input, output) {
     p1<-ggplot(reps,aes(x=Estimate))+
       geom_histogram()+
       ggtitle("Histogram of Sample Estimates")
+    
+    if(input$axis_type=="full"){
+      if(input$Variable=="Gender"|input$Variable=="Shade"){
+        
+        p1<-p1+scale_x_continuous(labels=scales::percent,limits=c(0,1),breaks=seq(0,1,by=0.2))
+      }
+      if(input$Variable=="Area"){
+        
+        p1<-p1+scale_x_continuous(limits=c(0,25),breaks=seq(0,25,by=5))
+      }
+      if(input$Variable=="SOC"){
+        
+        p1<-p1+scale_x_continuous(limits=c(0,100),breaks=seq(0,100,by=20))
+      }
+    }
+    if(input$axis_type=="zoom"){
+      if(input$Variable=="Gender"|input$Variable=="Shade"){
+        
+        p1<-p1+scale_x_continuous(labels=scales::percent)
+      }
+    }
+    
+    
+    
+    
     ggplotly(p1)
   })
     
   
   output$plot5<-renderPlotly({
+    
+    if(input$type=="CI"){
+    
     pdat<-populationdata
     pdat$Gender<-as.numeric(pdat$Gender=="Female")   
     pdat$Shade<-as.numeric(pdat$Shade=="Under Shade")   
@@ -232,6 +284,38 @@ server <- function(input, output) {
         p1<-p1+scale_y_continuous(labels=scales::percent)
       }
    
+    }
+    
+    else{
+      
+      pdat<-populationdata
+      pdat$Gender<-as.numeric(pdat$Gender=="Female")   
+      pdat$Shade<-as.numeric(pdat$Shade=="Under Shade")   
+      
+      addtext<-""
+      addtext[input$Variable=="Gender"]<-"= Female"
+      addtext[input$Variable=="Shade"]<-"= Under Shade" 
+      
+      ns<-data.frame(N=10:1000,mean=mean(pdat[,input$Variable]),sd=sd(pdat[,input$Variable]))
+      ns$SE<-sqrt(ns$sd/ns$N)
+      ns$Upper<-ns$mean+qt(0.975,ns$N-1)*ns$SE
+      ns$Lower<-ns$mean-qt(0.975,ns$N-1)*ns$SE
+      
+      print(ns)
+      
+      p1<-ggplot(data=ns,aes(y=SE,x=N))+
+        geom_line()+
+        xlab("Sample Size")+ylab("Standard Error")+ggtitle(paste(input$Variable,addtext))
+      
+      if(input$Variable=="Gender"|input$Variable=="Shade"){
+        
+        p1<-p1+scale_y_continuous(labels=scales::percent)
+      }
+      
+    }
+      
+      
+      
     p2<-p1  +
       theme(axis.title = element_text(size=14),title = element_text(size=12,face = "bold"),
             legend.text = element_text(size=14),legend.title = element_text(size=16,face="bold"),axis.text =element_text(size=14) )
@@ -239,6 +323,11 @@ server <- function(input, output) {
     new_plot<-layout(ggplotly(p2),yaxis=yaxis1)
     new_plot
   })
+  
+  
+  
+  
+  
   
   output$stats2<-renderTable({
     tmp<-sampledata()
