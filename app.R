@@ -157,10 +157,18 @@ server <- function(input, output) {
   
   
   output$title1<-renderText({
-    HTML(paste('<font size="+2">',"Estimates of",input$Variable,"\nfrom",counter$n,"surveys each of sample size",input$Add10),'</font>')
+    addtext<-""
+    addtext[input$Variable=="Gender"]<-"= Female"
+    addtext[input$Variable=="Shade"]<-"= Under Shade" 
+    
+    HTML(paste('<font size="+2">',"Estimates of",input$Variable,addtext,"\nfrom",counter$n,"surveys each of sample size",input$Add10),'</font>')
   })
   
   output$plot3<-renderPlotly({
+    
+    addtext<-""
+    addtext[input$Variable=="Gender"]<-"= Female"
+    addtext[input$Variable=="Shade"]<-"= Under Shade" 
     
     reps<-data.frame(Survey=1:counter$n,Estimate=NA,sd=NA)
     set.seed(1)
@@ -209,7 +217,7 @@ server <- function(input, output) {
     p2<-p1+geom_point(size=2,col="forestgreen")+
       theme(axis.title = element_text(size=14),title = element_text(size=18,face = "bold"),
             legend.text = element_text(size=14),legend.title = element_text(size=16,face="bold"),axis.text =element_text(size=14) )+
-      ylab(input$Variable)+xlab("Survey Number")
+      ylab(paste(input$Variable,addtext))+xlab("Survey Number")
     yaxis1<-list(axis.automargin=TRUE,tickprefix="       ")
     new_plot<-layout(ggplotly(p2),yaxis=yaxis1)
     new_plot
@@ -353,13 +361,15 @@ server <- function(input, output) {
 
 output$plot_d<-renderPlotly({
 
-
+  addtext<-""
+  addtext[input$Variable=="Gender"]<-"= Female"
+  addtext[input$Variable=="Shade"]<-"= Under Shade" 
   
     if(input$Variable=="Area"|input$Variable=="SOC"){
     p1<-ggplot(data=sampledata(),aes_string(y=input$Variable,x=input$group))+
       stat_summary(fun.args=list(mult = 1.96))+
       stat_summary(geom="point")+
-      xlab(input$group)+ylab(input$Variable)+
+      xlab(input$group)+ylab(paste(input$Variable,addtext))+
       theme(axis.title = element_text(size=14),title = element_text(size=18,face = "bold"),
             legend.text = element_text(size=14),legend.title = element_text(size=16,face="bold"),axis.text =element_text(size=14) )
     }
@@ -370,7 +380,7 @@ output$plot_d<-renderPlotly({
     p1<-ggplot(data=tmp,aes_string(y=input$Variable,x=input$group))+
       stat_summary(fun.args=list(mult = 1.96))+
       stat_summary(geom="point")+
-      xlab(input$group)+ylab(input$Variable)+
+      xlab(input$group)+ylab(paste(input$Variable,addtext))+
       theme(axis.title = element_text(size=14),title = element_text(size=18,face = "bold"),
             legend.text = element_text(size=14),legend.title = element_text(size=16,face="bold"),axis.text =element_text(size=14) )+
       scale_y_continuous(labels=scales::percent)
@@ -381,7 +391,7 @@ output$plot_d<-renderPlotly({
     p1<-ggplot(data=tmp,aes_string(y=input$Variable,x=input$group))+
       stat_summary(fun.args=list(mult = 1.96))+
       stat_summary(geom="point")+
-      xlab(input$group)+ylab(input$Variable)+
+      xlab(input$group)+ylab(paste(input$Variable,addtext))+
       theme(axis.title = element_text(size=14),title = element_text(size=18,face = "bold"),
             legend.text = element_text(size=14),legend.title = element_text(size=16,face="bold"),axis.text =element_text(size=14) )+
       scale_y_continuous(labels=scales::percent)
