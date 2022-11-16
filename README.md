@@ -1,4 +1,4 @@
-# PrecisionShiny
+# Precision Shiny App
 
 Shiny app for precision estimation developed for a WorldFish webinar.
 
